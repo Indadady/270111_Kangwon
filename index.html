@@ -765,10 +765,32 @@
         </div>
         <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-md border border-blue-100 flex flex-col">
-                <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud-sun text-blue-500"></i> 5일 날씨 예보 (상해)</h3>
-                <div id="weather-container" class="grid grid-cols-5 gap-2 mb-4"><div class="text-center text-sm text-slate-500 col-span-5 py-4">날씨 정보를 불러오는 중...</div></div>
-                <div class="mt-auto bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-slate-700">
-                    <strong>옷차림:</strong> 1월 상해·항주는 평균 2~10도로 쌀쌀합니다. <span class="text-blue-600 font-bold">두꺼운 외투와 방한용품</span>을 준비하고, 실내 에어컨 대비 레이어드 복장을 권장합니다.
+                <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud-sun text-blue-500"></i> 5일 날씨 예보 (항주 · 상해)</h3>
+                <div class="space-y-4 mb-4 flex-1">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-xs font-extrabold text-cyan-700"><i class="fa-solid fa-location-dot mr-1"></i>항주 (1~2일차)</p>
+                            <span class="text-[10px] text-slate-400 font-medium">FlyZoo · AI시티 · 알리바바</span>
+                        </div>
+                        <div id="weather-hangzhou" class="grid grid-cols-5 gap-2"><div class="text-center text-sm text-slate-500 col-span-5 py-3">불러오는 중...</div></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-xs font-extrabold text-indigo-700"><i class="fa-solid fa-location-dot mr-1"></i>상해 (2~5일차)</p>
+                            <span class="text-[10px] text-slate-400 font-medium">포동 · IRIC · 동화대</span>
+                        </div>
+                        <div id="weather-shanghai" class="grid grid-cols-5 gap-2"><div class="text-center text-sm text-slate-500 col-span-5 py-3">불러오는 중...</div></div>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-3.5 rounded-xl border border-blue-100 text-xs text-slate-700 leading-relaxed space-y-2">
+                    <p class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-shirt text-blue-600 mr-1"></i>1월 추천 옷차림</p>
+                    <ul class="space-y-1.5">
+                        <li>• <strong>기온</strong> : 항주·상해 1월 평균 약 2~10℃ · 체감은 더 쌀쌀할 수 있음</li>
+                        <li>• <strong>필수</strong> : <span class="text-blue-700 font-bold">두꺼운 코트·패딩</span>, 목도리·장갑, 따뜻한 겉옷</li>
+                        <li>• <strong>레이어드</strong> : 실내는 난방·에어컨이 강해 얇은 이너 + 가디건/후드를 겹쳐 입기</li>
+                        <li>• <strong>하의·신발</strong> : 기모 바지 또는 두꺼운 청바지 · 미끄럼 적은 운동화·워커</li>
+                        <li>• <strong>우천</strong> : 접이식 우산 · 방수 재킷 (예보에 비 아이콘이 있으면 챙기기)</li>
+                    </ul>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-md border border-blue-100">
@@ -1316,23 +1338,38 @@ function setDDayLogic() {
     }
     badge.classList.remove('hidden');
 }
+function renderWeatherGrid(containerId, weatherData) {
+    const weatherMap = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌧️',53:'🌧️',55:'🌧️',61:'☔',63:'☔',65:'☔',71:'❄️',73:'❄️',75:'❄️',95:'⛈️'};
+    const container = document.getElementById(containerId);
+    if (!container || !weatherData?.daily) {
+        if (container) container.innerHTML = '<div class="text-xs text-red-500 col-span-5 text-center py-2">날씨 정보를 불러오지 못했습니다.</div>';
+        return;
+    }
+    const codes = weatherData.daily.weather_code || weatherData.daily.weathercode || [];
+    let html = '';
+    for (let i = 0; i < Math.min(5, (weatherData.daily.time || []).length); i++) {
+        const dateStr = weatherData.daily.time[i].substring(5).replace('-', '/');
+        const icon = weatherMap[codes[i]] || '🌥️';
+        const tMax = Math.round(weatherData.daily.temperature_2m_max[i]);
+        const tMin = Math.round(weatherData.daily.temperature_2m_min[i]);
+        html += `<div class="bg-slate-50 border border-slate-100 rounded-xl p-2 text-center shadow-sm"><div class="text-[10px] text-slate-500 font-bold mb-1">${dateStr}</div><div class="text-xl md:text-2xl mb-1">${icon}</div><div class="text-[10px] font-bold"><span class="text-red-500">${tMax}°</span> <span class="text-blue-500">${tMin}°</span></div></div>`;
+    }
+    container.innerHTML = html || '<div class="text-xs text-red-500 col-span-5 text-center py-2">날씨 정보가 없습니다.</div>';
+}
 async function fetchWidgets() {
     try {
-        const weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=31.2304&longitude=121.4737&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=5');
-        const weatherData = await weatherRes.json();
-        const weatherMap = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌧️',53:'🌧️',55:'🌧️',61:'☔',63:'☔',65:'☔',71:'❄️',73:'❄️',75:'❄️',95:'⛈️'};
-        const container = document.getElementById('weather-container');
-        const codes = weatherData.daily.weather_code || weatherData.daily.weathercode || [];
-        container.innerHTML = '';
-        for (let i = 0; i < Math.min(5, (weatherData.daily.time || []).length); i++) {
-            const dateStr = weatherData.daily.time[i].substring(5).replace('-', '/');
-            const icon = weatherMap[codes[i]] || '🌥️';
-            const tMax = Math.round(weatherData.daily.temperature_2m_max[i]);
-            const tMin = Math.round(weatherData.daily.temperature_2m_min[i]);
-            container.innerHTML += `<div class="bg-white border border-slate-100 rounded-xl p-2 text-center shadow-sm"><div class="text-[10px] text-slate-500 font-bold mb-1">${dateStr}</div><div class="text-xl md:text-2xl mb-1">${icon}</div><div class="text-[10px] font-bold"><span class="text-red-500">${tMax}°</span> <span class="text-blue-500">${tMin}°</span></div></div>`;
-        }
+        const [hzRes, shRes] = await Promise.all([
+            fetch('https://api.open-meteo.com/v1/forecast?latitude=30.2741&longitude=120.1551&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=5'),
+            fetch('https://api.open-meteo.com/v1/forecast?latitude=31.2304&longitude=121.4737&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=5')
+        ]);
+        const [hzData, shData] = await Promise.all([hzRes.json(), shRes.json()]);
+        renderWeatherGrid('weather-hangzhou', hzData);
+        renderWeatherGrid('weather-shanghai', shData);
     } catch (e) {
-        document.getElementById('weather-container').innerHTML = '<div class="text-xs text-red-500 w-full text-center">날씨 정보를 불러오지 못했습니다.</div>';
+        ['weather-hangzhou', 'weather-shanghai'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '<div class="text-xs text-red-500 col-span-5 text-center py-2">날씨 정보를 불러오지 못했습니다.</div>';
+        });
     }
     try {
         const rateData = await (await fetch('https://api.exchangerate-api.com/v4/latest/CNY')).json();
